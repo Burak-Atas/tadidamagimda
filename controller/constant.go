@@ -17,4 +17,7 @@ var (
 
 	//token
 	errorMessageTokenNotFound = "token bulunamadı."
+
+	//same user alredy
+	errorMessageAlredyUser = "bu kullanıcı adı mevcut"
 )

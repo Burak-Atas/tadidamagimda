@@ -9,7 +9,7 @@ import (
 
 func Authentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ClientToken := c.Request.Header.Get("token")
+		ClientToken := c.Request.Header.Get("Authorization")
 
 		if ClientToken == "" {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Token doğrulanamadı"})

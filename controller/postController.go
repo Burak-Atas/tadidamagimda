@@ -149,7 +149,7 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 func AddPost(ps *PostService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		uid := "c.GetString(uid)"
+		uid := c.GetString("uid")
 		if uid == "" {
 			c.JSON(400, gin.H{"message": "kullanıcı kimliği saptanamadı"})
 			return
@@ -325,6 +325,7 @@ func GetProfilDetails(ps *PostService) gin.HandlerFunc {
 		defer cancel()
 
 		uid := c.GetString("uid")
+		fmt.Println("user", uid)
 		if uid == "" {
 			c.JSON(400, gin.H{"error": errorMessageUid})
 			return
@@ -336,7 +337,7 @@ func GetProfilDetails(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		filter := bson.D{primitive.E{Key: "senderid", Value: userName}}
+		filter := bson.D{primitive.E{Key: "sender_id", Value: uid}}
 		cur, err := ps.PostCollection.Find(ctx, filter)
 		if err != nil {
 			c.JSON(500, gin.H{
@@ -433,5 +434,67 @@ func DelProfilDetail(ps *PostService) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{"message": successMessageDelete})
 
+	}
+}
+func UpdateProfil(ps *PostService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		uid := c.GetString("uid")
+		if uid == "" {
+			c.JSON(400, gin.H{"error": "User ID is required."})
+			return
+		}
+
+		userName := c.Param("user_name")
+		if userName == "" {
+			c.JSON(400, gin.H{"error": "Username is required."})
+			return
+		}
+
+		var userDetails models.User
+		if err := c.BindJSON(&userDetails); err != nil {
+			c.JSON(400, gin.H{"message": "Invalid input."})
+			return
+		}
+
+		filter := bson.M{"user_name": userDetails.UserName}
+
+		var countDocuments, err = UserCollection.CountDocuments(ctx, filter)
+		fmt.Println("kullanıcı adı sayısı", countDocuments)
+		if err != nil {
+			c.JSON(500, errorMessageAlredyUser)
+			return
+		}
+
+		if countDocuments > 0 {
+			c.JSON(400, gin.H{"error": errorMessageAlredyUser})
+			return
+		}
+
+		filter = bson.M{"user_id": uid}
+
+		update := bson.M{
+			"$set": bson.M{
+				"user_name":  userDetails.UserName,
+				"first_name": userDetails.FirstName,
+				"last_name":  userDetails.LastName,
+				"biography":  userDetails.Biography,
+			},
+		}
+
+		result, err := UserCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Error updating user."})
+			return
+		}
+
+		if result.MatchedCount == 0 {
+			c.JSON(404, gin.H{"error": "User not found."})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "User updated successfully."})
 	}
 }
