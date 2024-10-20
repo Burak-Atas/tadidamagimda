@@ -92,6 +92,12 @@ func (ps *PostService) Start() {
 	}
 */
 
+type PostWithUsetDetails struct {
+	UserName       string      `json:"user_name"`
+	ImageUrlProfil string      `json:"image_url_profil"`
+	Post           models.Post `json:"post"`
+}
+
 func SSEGetPost(ps *PostService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
@@ -100,7 +106,7 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		var post []models.Post
+		var posts []models.Post
 
 		cursor, err := ps.PostCollection.Find(ctx, bson.M{})
 		if err != nil {
@@ -112,7 +118,7 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		err = cursor.All(ctx, &post)
+		err = cursor.All(ctx, &posts)
 		if err != nil {
 			c.SSEvent("error", gin.H{
 				"data": "Veritabanı hatası",
@@ -122,10 +128,19 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
+		var postWithUser []PostWithUsetDetails
+		for _, p := range posts {
+			user, _ := GetUserQueryUserID(p.SenderId)
+			postWithUser = append(postWithUser, PostWithUsetDetails{
+				UserName:       user.UserName,
+				ImageUrlProfil: user.ProfilImageURL,
+				Post:           p,
+			})
+		}
 		c.SSEvent("message", gin.H{
 			"data": "SSE message from server",
 			"time": time.Now().Format(time.RFC3339),
-			"post": post,
+			"post": postWithUser,
 		})
 		c.Writer.Flush()
 
@@ -144,6 +159,15 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 			}
 		}
 	}
+}
+
+func GetUserQueryUserID(senderId string) (*models.User, error) {
+	user := models.User{}
+	err := UserCollection.FindOne(context.TODO(), bson.D{primitive.E{Key: "user_id", Value: senderId}}).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, err
 }
 
 func AddPost(ps *PostService) gin.HandlerFunc {

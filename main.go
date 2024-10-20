@@ -45,5 +45,8 @@ func main() {
 	router.GET("/:user_name/:post_id/del", controller.DelProfilDetail(postService))
 	router.POST("/:user_name/profil/update", controller.UpdateProfil(postService))
 
+	//order profil  service
+
+	router.GET("/profil/:user_name", controller.GetOrderProfil(postService))
 	router.Run()
 }
