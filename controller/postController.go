@@ -370,7 +370,7 @@ func AddImage() gin.HandlerFunc {
 			return
 		}
 
-		fileURL := fmt.Sprintf("http://localhost:8080/%s", filename)
+		fileURL := fmt.Sprintf("https://gin-production-7763.up.railway.app/%s", filename)
 
 		c.JSON(http.StatusOK, gin.H{
 			"url": fileURL,
