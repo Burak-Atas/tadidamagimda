@@ -49,7 +49,7 @@ func AddProfilImage() gin.HandlerFunc {
 			return
 		}
 
-		fileURL := fmt.Sprintf("http://localhost:8080/static/images/%s", file.Filename)
+		fileURL := fmt.Sprintf("https://gin-production-7763.up.railway.app/static/images/%s", file.Filename)
 		filter := bson.D{primitive.E{Key: "user_id", Value: uid}}
 		update := bson.D{{Key: "$set", Value: bson.D{
 			{Key: "profil_image_url", Value: fileURL},
