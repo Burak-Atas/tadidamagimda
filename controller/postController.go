@@ -48,7 +48,7 @@ func (ps *PostService) Start() {
 			case comment := <-ps.Comment:
 				mu.Lock()
 				for i := range Post {
-					if Post[i].PostId == comment.PostId {
+					if Post[i].PostID == comment.PostId {
 						Post[i].Comments = append(Post[i].Comments, comment)
 						break
 					}
@@ -94,7 +94,7 @@ func (ps *PostService) Start() {
 
 type PostWithUsetDetails struct {
 	UserName       string      `json:"user_name"`
-	ImageUrlProfil string      `json:"image_url_profil"`
+	ImageUrlProfil string      `json:"profil_image_url"`
 	Post           models.Post `json:"post"`
 }
 
@@ -164,6 +164,7 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 func GetUserQueryUserID(senderId string) (*models.User, error) {
 	user := models.User{}
 	err := UserCollection.FindOne(context.TODO(), bson.D{primitive.E{Key: "user_id", Value: senderId}}).Decode(&user)
+	fmt.Println("profil_image_url", user.ProfilImageURL)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func AddPost(ps *PostService) gin.HandlerFunc {
 
 		post.SenderId = uid
 		post.Comments = make([]models.Comment, 0)
-		post.PostId = primitive.NewObjectID().Hex()
+		post.PostID = primitive.NewObjectID().Hex()
 		post.CountLike = 0
 		post.CreatedAt = time.Now()
 
@@ -213,13 +214,13 @@ func AddComment(ps *PostService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid := c.GetString("uid")
 		if uid == "" {
-			c.JSON(400, gin.H{"error": "Kullanıcı kimliği saptanamadı"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Kullanıcı kimliği saptanamadı"})
 			return
 		}
 
-		postId := c.Query("postID")
+		postId := c.Param("postid")
 		if postId == "" {
-			c.JSON(400, gin.H{"error": "hata oluştu"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Post kimliği saptanamadı"})
 			return
 		}
 
@@ -237,14 +238,69 @@ func AddComment(ps *PostService) gin.HandlerFunc {
 		comment.SenderId = uid
 		comment.PostId = postId
 
-		filter := bson.D{primitive.E{Key: "_id", Value: postId}}
-		updateData := bson.D{{Key: "$push", Value: bson.D{{Key: "comment", Value: bson.D{{Key: "$each", Value: comment}}}}}}
-		ps.PostCollection.UpdateOne(ctx, filter, updateData)
+		filter := bson.D{primitive.E{Key: "post_id", Value: postId}}
+		updateData := bson.D{
+			{Key: "$push", Value: bson.D{
+				{Key: "comments", Value: bson.D{{Key: "$each", Value: []models.Comment{comment}}}},
+			}},
+		}
 
-		ps.Comment <- comment
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Yorum başarıyla eklendi!",
-		})
+		if _, err := ps.PostCollection.UpdateOne(ctx, filter, updateData); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Yorum eklenirken bir hata oluştu."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Yorum başarıyla eklendi!"})
+	}
+}
+
+func DeleteComment(ps *PostService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		commentID := c.Query("commentid")
+		if commentID == "" {
+			c.JSON(400, "hatalı url bilgisi")
+			return
+		}
+
+		postID := c.Query("postids")
+		if postID == "" {
+			c.JSON(400, "hatalı url bilgisi")
+			return
+		}
+
+		uid := c.GetString("uid")
+		if uid == "" {
+			c.JSON(400, gin.H{"message": "kullanıcı kimliği saptanamadı"})
+			return
+		}
+
+		filter := bson.D{
+			{Key: "post_id", Value: postID},
+			{Key: "comments.comment_id", Value: commentID},
+			{Key: "comments.sender_id", Value: uid},
+		}
+
+		update := bson.D{
+			{Key: "$pull", Value: bson.D{
+				{Key: "comments", Value: bson.D{
+					{Key: "comment_id", Value: commentID},
+				}},
+			}},
+		}
+		result, err := ps.PostCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "yorum silinirken hata oluştu"})
+			return
+		}
+		if result.ModifiedCount == 0 {
+			c.JSON(404, gin.H{"message": "yorum bulunamadı veya silinemedi"})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "yorum başarıyla silindi"})
 	}
 }
 
@@ -253,39 +309,47 @@ func GetPost(ps *PostService) gin.HandlerFunc {
 		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		id := c.Query("postid")
+		id := c.Param("postid")
 		if id == "" {
 			c.JSON(400, "hatalı url bilgisi")
 			return
 		}
 
 		var post models.Post
+		var user models.User
+		filter := bson.D{primitive.E{Key: "post_id", Value: id}}
 
-		filter := bson.D{primitive.E{Key: "_id", Value: id}}
 		err := ps.PostCollection.FindOne(ctx, filter).Decode(&post)
-
+		err = UserCollection.FindOne(ctx, bson.D{primitive.E{Key: "user_id", Value: post.SenderId}}).Decode(&user)
+		fmt.Println(post)
 		if err != nil {
 			c.JSON(400, gin.H{"error": "şu anda gönderiye erişilemiyor"})
 			return
 		}
 
-		c.JSON(200, gin.H{"post": post})
+		var p PostWithUsetDetails
+
+		p.Post = post
+		p.ImageUrlProfil = user.ProfilImageURL
+		p.UserName = user.UserName
+
+		c.JSON(200, gin.H{"post": p})
 	}
 }
 
 var Post []models.Post = []models.Post{
-	{PostId: "1", Text: "Bu, gönderi 1 içeriğidir.", ImageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRi2x8RiCqcGmMiQn455B9Jxup0QTcobH7bw&s", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
-	{PostId: "2", Text: "Bu, gönderi 2 içeriğidir.", ImageUrl: "https://picsum.photos/300", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
-	{PostId: "3", Text: "Bu, gönderi 3 içeriğidir.", ImageUrl: "https://picsum.photos/400", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
-	{PostId: "4", Text: "Bu, gönderi 4 içeriğidir.", ImageUrl: "https://picsum.photos/500", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "5", Text: "Bu, gönderi 5 içeriğidir.", ImageUrl: "https://picsum.photos/200", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "6", Text: "Bu, gönderi 6 içeriğidir.", ImageUrl: "https://example.com/image6.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "7", Text: "Bu, gönderi 7 içeriğidir.", ImageUrl: "https://example.com/image7.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "8", Text: "Bu, gönderi 8 içeriğidir.", ImageUrl: "https://example.com/image8.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "9", Text: "Bu, gönderi 9 içeriğidir.", ImageUrl: "https://example.com/image9.jpg", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
-	{PostId: "10", Text: "Bu, gönderi 10 içeriğidir.", ImageUrl: "https://example.com/image10.jpg", Comments: make([]models.Comment, 0)},
-	{PostId: "11", Text: "Gönderi 11", ImageUrl: "https://example.com/image11.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
-	{PostId: "12", Text: "Gönderi 12", ImageUrl: "https://example.com/image12.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "1", Text: "Bu, gönderi 1 içeriğidir.", ImageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRi2x8RiCqcGmMiQn455B9Jxup0QTcobH7bw&s", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
+	{PostID: "2", Text: "Bu, gönderi 2 içeriğidir.", ImageUrl: "https://picsum.photos/300", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
+	{PostID: "3", Text: "Bu, gönderi 3 içeriğidir.", ImageUrl: "https://picsum.photos/400", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
+	{PostID: "4", Text: "Bu, gönderi 4 içeriğidir.", ImageUrl: "https://picsum.photos/500", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "5", Text: "Bu, gönderi 5 içeriğidir.", ImageUrl: "https://picsum.photos/200", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "6", Text: "Bu, gönderi 6 içeriğidir.", ImageUrl: "https://example.com/image6.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "7", Text: "Bu, gönderi 7 içeriğidir.", ImageUrl: "https://example.com/image7.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "8", Text: "Bu, gönderi 8 içeriğidir.", ImageUrl: "https://example.com/image8.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "9", Text: "Bu, gönderi 9 içeriğidir.", ImageUrl: "https://example.com/image9.jpg", CreatedAt: time.Now(), CountLike: 4, Comments: make([]models.Comment, 0)},
+	{PostID: "10", Text: "Bu, gönderi 10 içeriğidir.", ImageUrl: "https://example.com/image10.jpg", Comments: make([]models.Comment, 0)},
+	{PostID: "11", Text: "Gönderi 11", ImageUrl: "https://example.com/image11.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
+	{PostID: "12", Text: "Gönderi 12", ImageUrl: "https://example.com/image12.jpg", CreatedAt: time.Now(), Comments: make([]models.Comment, 0)},
 }
 
 func AddImage() gin.HandlerFunc {

@@ -51,6 +51,7 @@ func GetOrderProfil(ps *PostService) gin.HandlerFunc {
 			"user_name":  user.UserName,
 			"bio":        user.Biography,
 			"first_name": user.FirstName,
+			"image_url":  user.ProfilImageURL,
 		})
 	}
 }

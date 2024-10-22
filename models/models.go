@@ -13,7 +13,7 @@ type User struct {
 	LastName       string             `bson:"last_name" json:"last_name"`   // Kullanıcının soyadı
 	Email          string             `bson:"email" json:"email"`           // Kullanıcının e-postası
 	UserName       string             `bson:"user_name" json:"user_name"`
-	ProfilImageURL string             `json:"profil_image_url"`
+	ProfilImageURL string             `json:"profil_image_url" bson:"profil_image_url"`
 	Biography      string             `bson:"biography" json:"biography"`
 	Password       string             `bson:"password" json:"password"` // Kullanıcının şifresi (şifrelenmiş)
 	UserType       string             `bson:"user_type"`                // Kullanıcının türü (admin, user, vb.)
@@ -25,22 +25,22 @@ type User struct {
 type Post struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`              // MongoDB ObjectID
 	SenderId  string             `bson:"sender_id"`                  // Göndericinin ID'si
-	PostId    string             `bson:"post_id"`                    // Gönderinin ID'si
+	PostID    string             `bson:"post_id" json:"post_id"`     // Gönderinin ID'si
 	ImageUrl  string             `bson:"image_url" json:"image_url"` // Resim URL'si
 	Text      string             `bson:"text"`                       // Gönderinin içeriği
 	CreatedAt time.Time          `bson:"created_at"`                 // Oluşturulma zamanı
 	Latitude  float32            `bson:"latitude"`                   // Enlem bilgisi
 	Langitude float32            `bson:"langitude"`                  // Boylam bilgisi
 	CountLike int                `bson:"count_like"`                 // Beğeni sayısı
-	Comments  []Comment          `bson:"comments"`                   // Yorumlar
+	Comments  []Comment          `json:"comments"`                   // Yorumlar
 }
 
 type Comment struct {
-	PostId     string `bson:"post_id"`    // Gönderinin ID'si
-	Comment_Id string `bson:"comment_id"` // Yorumun ID'si
-	SenderId   string `bson:"sender_id"`  // Yorum gönderenin ID'si
-	Text       string `bson:"text"`       // Yorumun içeriği
-	Rating     int    `bson:"rating"`     // Yorumdaki puan
+	PostId     string `bson:"post_id" json:"post_id"`       // Gönderinin ID'si
+	Comment_Id string `bson:"comment_id" json:"comment_id"` // Yorumun ID'si
+	SenderId   string `bson:"sender_id" json:"sender_id"`   // Yorum gönderenin ID'si
+	Text       string `bson:"text" json:"text"`             // Yorumun içeriği
+	Rating     int    `bson:"rating" json:"comment_like"`   // Yorumdaki puan
 }
 
 type RegionalFood struct {

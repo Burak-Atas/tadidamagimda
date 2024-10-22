@@ -34,7 +34,10 @@ func main() {
 
 	router.Use(middleware.Authentication())
 	router.POST("/addpost", controller.AddPost(postService))
+
 	router.POST("/add-comment/:postid", controller.AddComment(postService))
+	router.DELETE("/delete-commet/:postid/:commentid", controller.DeleteComment(postService))
+
 	router.GET("/postlike", controller.PostLike(postService))
 	router.POST("/add-image", controller.AddImage())
 	router.GET("/post/:postid", controller.GetPost(postService))
@@ -44,6 +47,7 @@ func main() {
 	router.GET("/:user_name/profil/:post_id", controller.GetProfilPostDetails(postService))
 	router.GET("/:user_name/:post_id/del", controller.DelProfilDetail(postService))
 	router.POST("/:user_name/profil/update", controller.UpdateProfil(postService))
+	router.POST("/:user_name/profil/add-image", controller.AddProfilImage())
 
 	//order profil  service
 
