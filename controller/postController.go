@@ -506,7 +506,7 @@ func DelProfilDetail(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		post_id := c.GetString("post_id")
+		post_id := c.Param("post_id")
 		if uid == "" {
 			c.JSON(400, gin.H{"error": errorMessagePostID})
 			return

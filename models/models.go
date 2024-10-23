@@ -20,6 +20,7 @@ type User struct {
 	Token          string             `bson:"token"`                    // JWT veya diğer kimlik doğrulama tokeni
 	CreatedAt      time.Time          `bson:"created_at"`               // Oluşturulma zamanı
 	UpdatedAt      time.Time          `bson:"updated_at"`               // Güncellenme zamanı
+	FollowList     []string           `bosn:"follow_list" json:"follow_list"`
 }
 
 type Post struct {
@@ -31,8 +32,10 @@ type Post struct {
 	CreatedAt time.Time          `bson:"created_at"`                 // Oluşturulma zamanı
 	Latitude  float32            `bson:"latitude"`                   // Enlem bilgisi
 	Langitude float32            `bson:"langitude"`                  // Boylam bilgisi
-	CountLike int                `bson:"count_like"`                 // Beğeni sayısı
-	Comments  []Comment          `json:"comments"`                   // Yorumlar
+	City      string             `json:"city"`
+	Tag       []string           `json:"tags"`
+	CountLike int                `bson:"count_like"` // Beğeni sayısı
+	Comments  []Comment          `json:"comments"`   // Yorumlar
 }
 
 type Comment struct {
@@ -56,21 +59,20 @@ type Resturant struct {
 	ResturanId string
 	Name       string
 	Location   string
-	//Menu []Menu
-	//Rating int
 }
 
 type City struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	Name      string             `bson:"name"`
-	Food      []FameousFood      `bson:"food"`
-	ByAddCity string
-	CityID    string
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
+	CityName  string             `bson:"city_name" json:"city_name"`
+	Food      []FameousFood      `bson:"food" json:"food"`
+	ByAddCity string             `json:"by_add_city"`
+	CityID    string             `json:"city_id"`
 }
 
 type FameousFood struct {
-	Name        string   `bson:"name"`
-	Ingredients []string `bson:"ingredients"`
-	Description string   `bson:"description,omitempty"`
-	ImageURL    string
+	Name        string   `bson:"name" json:"name"`
+	Ingredients []string `bson:"ingredients" json:"ingredients"`
+	Description string   `bson:"description,omitempty" json:"description"`
+	ImageURL    string   `json:"image?url"`
+	ByAddFood   string   `json:"by_add_food"`
 }
