@@ -12,8 +12,6 @@ import (
 
 func main() {
 
-
-	// bu bir deneme mesajı
 	post := db.UserData(db.Client, "post")
 
 	postService := controller.NewPostService(post)
