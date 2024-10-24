@@ -34,8 +34,8 @@ type Post struct {
 	Langitude float32            `bson:"langitude"`                  // Boylam bilgisi
 	City      string             `json:"city"`
 	Tag       []string           `json:"tags"`
-	CountLike int                `bson:"count_like"` // Beğeni sayısı
-	Comments  []Comment          `json:"comments"`   // Yorumlar
+	CountLike int                `bson:"count_like" json:"count_like"` // Beğeni sayısı
+	Comments  []Comment          `json:"comments"`                     // Yorumlar
 }
 
 type Comment struct {

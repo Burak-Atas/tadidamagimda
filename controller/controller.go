@@ -145,3 +145,35 @@ func UserDetails() gin.HandlerFunc {
 		})
 	}
 }
+
+func OrderUserDetails() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		user_id := c.Query("user_id")
+		if user_id == "" {
+			c.JSON(400, gin.H{
+				"error": errorMessageTokenNotFound,
+			})
+			return
+		}
+
+		var foundUser models.User
+		filter := bson.D{primitive.E{Key: "user_id", Value: user_id}}
+		err := UserCollection.FindOne(ctx, filter).Decode(&foundUser)
+		if err != nil {
+			c.JSON(400, gin.H{
+				"error": errorMessageTokenNotFound,
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"user": gin.H{
+				"user_name":        foundUser.UserName,
+				"profil_image_url": foundUser.ProfilImageURL,
+			},
+		})
+	}
+}
