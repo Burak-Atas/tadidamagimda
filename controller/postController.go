@@ -389,7 +389,7 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		filter := bson.D{primitive.E{Key: "postid", Value: postID}}
+		filter := bson.D{primitive.E{Key: "post_id", Value: postID}}
 		update := bson.D{
 			primitive.E{Key: "$inc", Value: bson.D{{Key: "CountLike", Value: 1}}},
 		}
