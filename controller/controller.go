@@ -151,7 +151,7 @@ func OrderUserDetails() gin.HandlerFunc {
 		var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		user_id := c.Query("user_id")
+		user_id := c.Param("user_id")
 		if user_id == "" {
 			c.JSON(400, gin.H{
 				"error": errorMessageTokenNotFound,
