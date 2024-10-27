@@ -389,12 +389,35 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		filter := bson.D{primitive.E{Key: "post_id", Value: postID}}
-		update := bson.D{
-			primitive.E{Key: "$inc", Value: bson.D{{Key: "count_like", Value: 1}}},
+		uid := c.GetString("uid")
+		fmt.Println("user", uid)
+		if uid == "" {
+			c.JSON(400, gin.H{"error": errorMessageUid})
+			return
 		}
 
-		_, err := ps.PostCollection.UpdateOne(ctx, filter, update)
+		// Gönderiyi bul ve kullanıcının daha önce beğenip beğenmediğini kontrol et
+		var post models.Post
+		filter := bson.D{primitive.E{Key: "post_id", Value: postID}}
+		err := ps.PostCollection.FindOne(ctx, filter).Decode(&post)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Post not found"})
+			return
+		}
+
+		for _, like := range post.Likes {
+			if like == uid {
+				c.JSON(400, gin.H{"error": "User has already liked this post"})
+				return
+			}
+		}
+
+		update := bson.D{
+			primitive.E{Key: "$inc", Value: bson.D{{Key: "count_like", Value: 1}}},
+			primitive.E{Key: "$push", Value: bson.D{{Key: "likes", Value: uid}}},
+		}
+
+		_, err = ps.PostCollection.UpdateOne(ctx, filter, update)
 
 		if err != nil {
 			c.JSON(400, gin.H{"error": "Unable to update CountLike"})
@@ -402,7 +425,6 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{"message": "CountLike updated successfully"})
-
 	}
 }
 

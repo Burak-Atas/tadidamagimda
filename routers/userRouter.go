@@ -10,6 +10,6 @@ func UserRoutes(incommingRouter *gin.Engine) {
 	incommingRouter.POST("/login", controller.Login())
 	incommingRouter.POST("/signup", controller.SignUp())
 	incommingRouter.GET("/userdetails", controller.UserDetails())
-	incommingRouter.GET("/userdetails/:user_id", controller.UserDetails())
+	incommingRouter.GET("/userdetails/:user_id", controller.OrderUserDetails())
 
 }

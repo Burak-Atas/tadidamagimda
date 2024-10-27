@@ -152,6 +152,7 @@ func OrderUserDetails() gin.HandlerFunc {
 		defer cancel()
 
 		user_id := c.Param("user_id")
+		fmt.Println("deneme amaçlı")
 		if user_id == "" {
 			c.JSON(400, gin.H{
 				"error": errorMessageTokenNotFound,

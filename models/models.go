@@ -36,6 +36,7 @@ type Post struct {
 	Tag       []string           `json:"tags"`
 	CountLike int                `bson:"count_like" json:"count_like"` // Beğeni sayısı
 	Comments  []Comment          `json:"comments"`                     // Yorumlar
+	Likes     []string           `json:"likes"`
 }
 
 type Comment struct {
