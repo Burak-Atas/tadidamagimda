@@ -194,6 +194,7 @@ func AddPost(ps *PostService) gin.HandlerFunc {
 		post.PostID = primitive.NewObjectID().Hex()
 		post.CountLike = 0
 		post.CreatedAt = time.Now()
+		post.Likes = make([]string, 0)
 
 		// Kanal üzerinden post'u gönderiyoruz
 		ps.AddPost <- post
@@ -390,7 +391,6 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 		}
 
 		uid := c.GetString("uid")
-		fmt.Println("user", uid)
 		if uid == "" {
 			c.JSON(400, gin.H{"error": errorMessageUid})
 			return
@@ -401,8 +401,14 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 		filter := bson.D{primitive.E{Key: "post_id", Value: postID}}
 		err := ps.PostCollection.FindOne(ctx, filter).Decode(&post)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "Post not found"})
+			c.JSON(404, gin.H{"error": "Post not found"})
+			fmt.Println("Error finding post:", err) // Hata mesajını terminale yazdır
 			return
+		}
+
+		// likes alanını kontrol et ve null ise başlat
+		if post.Likes == nil {
+			post.Likes = []string{}
 		}
 
 		for _, like := range post.Likes {
@@ -413,14 +419,14 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 		}
 
 		update := bson.D{
-			primitive.E{Key: "$inc", Value: bson.D{{Key: "count_like", Value: 1}}},
-			primitive.E{Key: "$push", Value: bson.D{{Key: "likes", Value: uid}}},
+			{Key: "$inc", Value: bson.D{{Key: "count_like", Value: 1}}},
+			{Key: "$push", Value: bson.D{{Key: "likes", Value: uid}}},
 		}
 
 		_, err = ps.PostCollection.UpdateOne(ctx, filter, update)
-
 		if err != nil {
-			c.JSON(400, gin.H{"error": "Unable to update CountLike"})
+			c.JSON(500, gin.H{"error": "Unable to update CountLike"})
+			fmt.Println("Error updating CountLike:", err) // Hata mesajını terminale yazdır
 			return
 		}
 
