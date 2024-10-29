@@ -9,9 +9,12 @@ var (
 	errorMessage       = ""
 	errorMessagePostID = "Beğenme işlemi sırasında hata oluştu. Lütfen daha sonra tekrar deneyiniz."
 
-	errorMessageFindDB = "post veri tabanında bulunamadı"
-	errorMessageUid    = "kullanıcı kimliği saptanamadı"
-	errorMessageDelete = "veri silinirken hata oluştu"
+	errorMessageFindDB   = "post veri tabanında bulunamadı"
+	errorMessageUid      = "kullanıcı kimliği saptanamadı"
+	errorMessageDelete   = "veri silinirken hata oluştu"
+	errorMessageForbiden = "bu işlem için yetkiniz bulunmamktadır"
+	errorMessageLoggedIn = "lütfen giriş yapın"
+
 	//server error
 	errorrMessageInternalServer = "işlem başarısız oldu"
 

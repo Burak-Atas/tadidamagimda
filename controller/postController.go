@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type PostService struct {
@@ -108,7 +109,7 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 
 		var posts []models.Post
 
-		cursor, err := ps.PostCollection.Find(ctx, bson.M{})
+		cursor, err := ps.PostCollection.Find(ctx, bson.M{}, options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}))
 		if err != nil {
 			c.SSEvent("error", gin.H{
 				"data": "Veritabanı hatası",
@@ -321,6 +322,10 @@ func GetPost(ps *PostService) gin.HandlerFunc {
 		filter := bson.D{primitive.E{Key: "post_id", Value: id}}
 
 		err := ps.PostCollection.FindOne(ctx, filter).Decode(&post)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "şu anda gönderiye erişilemiyor"})
+			return
+		}
 		err = UserCollection.FindOne(ctx, bson.D{primitive.E{Key: "user_id", Value: post.SenderId}}).Decode(&user)
 		fmt.Println(post)
 		if err != nil {

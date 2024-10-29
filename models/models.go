@@ -74,6 +74,25 @@ type FameousFood struct {
 	Name        string   `bson:"name" json:"name"`
 	Ingredients []string `bson:"ingredients" json:"ingredients"`
 	Description string   `bson:"description,omitempty" json:"description"`
-	ImageURL    string   `json:"image?url"`
+	ImageURL    string   `json:"image_url"`
 	ByAddFood   string   `json:"by_add_food"`
+}
+
+/*
+questionnaire
+*/
+type RecipeFeedback struct {
+	ID               primitive.ObjectID `json:"_id" bson:"_id"`
+	RecipeID         string             `json:"recipe_id"`
+	RestaurantName   string             `json:"restaurant_name"`   // Restoranın adı
+	City             string             `json:"city"`              // Şehir adı
+	ImageURL         string             `json:"image_url"`         // Yemek görseli
+	Price            string             `json:"price"`             // Fiyat
+	RecipeDetails    string             `json:"recipe_details"`    // Yemek içeriği
+	Text             string             `json:"text"`              // Yemek hakkında yorum
+	PositiveFeedback int                `json:"positive_feedback"` // Olumlu geri bildirim sayısı
+	NegativeFeedback int                `json:"negative_feedback"` // Olumsuz geri bildirim sayısı
+	PositiveUserIDs  []string           `json:"positive_user_ids"` // Olumlu geri bildirimde bulunan kullanıcı ID'leri
+	NegativeUserIDs  []string           `json:"negative_user_ids"` // Olumsuz geri bildirimde bulunan kullanıcı ID'leri
+	StartFormUserID  string             `json:"start_from_user_id"`
 }

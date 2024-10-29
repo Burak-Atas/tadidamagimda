@@ -31,7 +31,7 @@ func main() {
 
 	routers.UserRoutes(router)
 	router.GET("/sse", controller.SSEGetPost(postService))
-
+	router.GET("/get_recipe_feed_back", controller.GetQuestionnaire())
 	router.Use(middleware.Authentication())
 	router.POST("/addpost", controller.AddPost(postService))
 
@@ -50,7 +50,12 @@ func main() {
 	router.POST("/:user_name/profil/add-image", controller.AddProfilImage())
 
 	//order profil  service
-
 	router.GET("/profil/:user_name", controller.GetOrderProfil(postService))
+
+	//anket services
+	router.POST("/post_recipe_feed_back", controller.PostQuestionnaire())
+
+	router.GET("/vote_post", controller.VotePost())
+
 	router.Run()
 }
