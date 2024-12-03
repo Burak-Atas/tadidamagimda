@@ -20,7 +20,8 @@ type PostService struct {
 	Comment chan models.Comment
 	SSEChan chan models.Post
 
-	PostCollection *mongo.Collection
+	PostCollection     *mongo.Collection
+	PostLikeCollection *mongo.Collection
 }
 
 func NewPostService(postCollection *mongo.Collection) *PostService {
@@ -93,14 +94,18 @@ func (ps *PostService) Start() {
 	}
 */
 
-type PostWithUsetDetails struct {
+type PostWithUserDetails struct {
 	UserName       string      `json:"user_name"`
 	ImageUrlProfil string      `json:"profil_image_url"`
 	Post           models.Post `json:"post"`
+	Liked          int         `json:"liked"`
 }
 
 func SSEGetPost(ps *PostService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var userID string
+		userID = c.GetString("uid")
+
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Connection", "Keep-Alive")
 		c.Header("Cache-Control", "no-cache")
@@ -129,15 +134,23 @@ func SSEGetPost(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		var postWithUser []PostWithUsetDetails
+		var postWithUser []PostWithUserDetails
 		for _, p := range posts {
 			user, _ := GetUserQueryUserID(p.SenderId)
-			postWithUser = append(postWithUser, PostWithUsetDetails{
+			postWithUser = append(postWithUser, PostWithUserDetails{
 				UserName:       user.UserName,
 				ImageUrlProfil: user.ProfilImageURL,
 				Post:           p,
 			})
 		}
+
+		if userID != "" {
+			ok := ps.PostLikeCollection.FindOne(context.TODO(), bson.D{{Key: "user_id", Value: userID}})
+			if ok != nil {
+				postWithUser = append(postWithUser, PostWithUserDetails{Liked: 1})
+			}
+		}
+
 		c.SSEvent("message", gin.H{
 			"data": "SSE message from server",
 			"time": time.Now().Format(time.RFC3339),
@@ -333,7 +346,7 @@ func GetPost(ps *PostService) gin.HandlerFunc {
 			return
 		}
 
-		var p PostWithUsetDetails
+		var p PostWithUserDetails
 
 		p.Post = post
 		p.ImageUrlProfil = user.ProfilImageURL
@@ -425,6 +438,9 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 
 		update := bson.D{
 			{Key: "$inc", Value: bson.D{{Key: "count_like", Value: 1}}},
+		}
+
+		postLike := bson.D{
 			{Key: "$push", Value: bson.D{{Key: "likes", Value: uid}}},
 		}
 
@@ -434,50 +450,57 @@ func PostLike(ps *PostService) gin.HandlerFunc {
 			fmt.Println("Error updating CountLike:", err) // Hata mesajını terminale yazdır
 			return
 		}
+		ps.PostLikeCollection.InsertOne(ctx, postLike)
 
 		c.JSON(200, gin.H{"message": "CountLike updated successfully"})
 	}
 }
 
-// /:user_name/profil
-func GetProfilDetails(ps *PostService) gin.HandlerFunc {
+func RemovePostLike(ps *PostService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		uid := c.GetString("uid")
-		fmt.Println("user", uid)
-		if uid == "" {
-			c.JSON(400, gin.H{"error": errorMessageUid})
-			return
-		}
-
-		userName := c.Param("user_name")
-		if userName == "" {
-			c.JSON(400, gin.H{"error": errorMessageUid})
-			return
-		}
-
-		filter := bson.D{primitive.E{Key: "sender_id", Value: uid}}
-		cur, err := ps.PostCollection.Find(ctx, filter)
-		if err != nil {
-			c.JSON(500, gin.H{
-				"error": errorrMessageInternalServer,
+		userID := c.GetString("uid")
+		if userID == "" {
+			c.JSON(400, gin.H{
+				"error": "kullanıcı id si bulunamadı daha sonra tekrar deneyin",
 			})
 			return
 		}
 
-		var posts []models.Post
-
-		err = cur.All(ctx, &posts)
-		if err != nil {
-			c.JSON(500, gin.H{
-				"error": errorrMessageInternalServer,
+		postID, ok := c.Params.Get("postID")
+		if !ok {
+			c.JSON(400, gin.H{
+				"error": "post id bulunamadı daha sonra tekrar deneyin",
 			})
 			return
 		}
 
-		c.JSON(200, gin.H{"message": successMessage, "post": posts})
+		filter := bson.D{{Key: "user_id", Value: userID}, {Key: "post_id", Value: postID}}
+		_, err := ps.PostLikeCollection.DeleteOne(ctx, filter)
+		if err != nil {
+			c.JSON(400, gin.H{
+				"erorr": "hatalı işlem",
+			})
+			return
+		}
+		update := bson.D{
+			{Key: "$inc", Value: bson.D{{Key: "count_like", Value: -1}}},
+		}
+
+		_, err = ps.PostCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			c.JSON(400, gin.H{
+				"erorr": "hatalı işlem",
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"message": "işlem başarılı",
+		})
+
 	}
 }
 

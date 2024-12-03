@@ -96,3 +96,9 @@ type RecipeFeedback struct {
 	NegativeUserIDs  []string           `json:"negative_user_ids"` // Olumsuz geri bildirimde bulunan kullanıcı ID'leri
 	StartFormUserID  string             `json:"start_from_user_id"`
 }
+
+type PostLikeModels struct {
+	UserID     string
+	PostID     string
+	PostLikeAt time.Time
+}

@@ -6,7 +6,6 @@ import (
 	"nerde_yenir/db"
 	"nerde_yenir/models"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,6 @@ import (
 )
 
 var questionnaireCollection = db.UserData(db.Client, "QuestionnaireCollection")
-var wg sync.WaitGroup
 
 func GetQuestionnaire() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -213,7 +211,7 @@ func VotePost() gin.HandlerFunc {
 
 		vt := c.Query("vote")
 
-		if vt != "yes" && vt != "no" { // Hatalı değer kontrolü düzeltildi
+		if vt != "yes" && vt != "no" {
 			c.JSON(400, gin.H{
 				"error": "Hatalı değer, lütfen 1 veya 2 girin.",
 			})

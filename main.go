@@ -3,6 +3,7 @@ package main
 import (
 	"nerde_yenir/controller"
 	"nerde_yenir/db"
+	"nerde_yenir/helpers"
 	"nerde_yenir/middleware"
 	"nerde_yenir/routers"
 
@@ -17,6 +18,14 @@ func main() {
 	postService := controller.NewPostService(post)
 	postService.Start()
 
+	webConn := helpers.NewWebRTC()
+
+	go func() {
+		for {
+			webConn.Connection()
+		}
+	}()
+
 	router := gin.New()
 
 	corsConfig := cors.Config{
@@ -29,6 +38,8 @@ func main() {
 	router.Use(gin.Logger())
 	router.Static("/static", "./static")
 
+	router.GET("/webrtc", controller.Connection(webConn))
+
 	routers.UserRoutes(router)
 	router.GET("/sse", controller.SSEGetPost(postService))
 	router.GET("/get_recipe_feed_back", controller.GetQuestionnaire())
@@ -39,11 +50,12 @@ func main() {
 	router.DELETE("/delete-commet/:postid/:commentid", controller.DeleteComment(postService))
 
 	router.GET("/postlike", controller.PostLike(postService))
+	router.GET("/removepostlike", controller.RemovePostLike(postService))
 	router.POST("/add-image", controller.AddImage())
 	router.GET("/post/:postid", controller.GetPost(postService))
 
 	//post service
-	router.GET("/:user_name/profil", controller.GetProfilDetails(postService))
+	router.GET("/:user_name/profil", controller.GetProfilPostDetails(postService))
 	router.GET("/:user_name/profil/:post_id", controller.GetProfilPostDetails(postService))
 	router.GET("/:user_name/:post_id/del", controller.DelProfilDetail(postService))
 	router.POST("/:user_name/profil/update", controller.UpdateProfil(postService))
@@ -56,6 +68,8 @@ func main() {
 	router.POST("/post_recipe_feed_back", controller.PostQuestionnaire())
 
 	router.GET("/vote_post", controller.VotePost())
+
+	//web rtc
 
 	router.Run()
 }
